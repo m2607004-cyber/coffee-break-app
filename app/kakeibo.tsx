@@ -4,9 +4,10 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import InputTab from "./_components/input-tab";
 import CalendarTab from "./_components/calendar-tab";
 import ReportTab from "./_components/report-tab";
+import BudgetTab from "./_components/budget-tab";
 import { applyRecurring } from "./lib/entries-store";
 
-type Tab = "input" | "calendar" | "report";
+type Tab = "input" | "calendar" | "budget" | "report";
 
 const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
   {
@@ -23,6 +24,17 @@ const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
       <>
         <rect x="3" y="4" width="18" height="18" rx="2" />
         <path d="M16 2v4M8 2v4M3 10h18" />
+      </>
+    ),
+  },
+  {
+    id: "budget",
+    label: "予算",
+    title: "予算",
+    icon: (
+      <>
+        <path d="M21 12a9 9 0 1 1-9-9v9z" />
+        <path d="M15 3.5A9 9 0 0 1 20.5 9H15z" />
       </>
     ),
   },
@@ -105,6 +117,7 @@ function KakeiboApp() {
             }}
           />
         )}
+        {tab === "budget" && <BudgetTab />}
         {tab === "report" && <ReportTab />}
       </main>
 

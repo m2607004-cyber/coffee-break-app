@@ -189,6 +189,27 @@ export function useSettings() {
   return useSyncExternalStore(settingsStore.subscribe, settingsStore.get, () => DEFAULT_SETTINGS);
 }
 
+/** 予算（毎月同じものを使う）。total は月全体、categories はカテゴリごとの支出予算 */
+export type Budget = { total: number | null; categories: Record<string, number> };
+const EMPTY_BUDGET: Budget = { total: null, categories: {} };
+const budgetStore = createStore<Budget>(
+  "kakeibo:budget:v1",
+  EMPTY_BUDGET,
+  (v): v is Budget =>
+    typeof v === "object" &&
+    v !== null &&
+    typeof (v as Budget).categories === "object" &&
+    (v as Budget).categories !== null,
+);
+
+export function useBudget() {
+  return useSyncExternalStore(budgetStore.subscribe, budgetStore.get, () => EMPTY_BUDGET);
+}
+
+export function setBudget(budget: Budget) {
+  budgetStore.set(budget);
+}
+
 export function useCustomCategories() {
   return useSyncExternalStore(customStore.subscribe, customStore.get, () => EMPTY_CUSTOM);
 }
