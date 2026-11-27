@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  categoryIcon,
   setInitialBalance,
   upcomingThisMonth,
   useEntries,
@@ -40,7 +41,9 @@ export default function ReportTab() {
   const upcomingIncome = upcoming.filter((r) => r.type === "income").reduce((s, r) => s + r.amount, 0);
   const daysLeft = daysInMonth(thisMonth) - Number(today.slice(8, 10)) + 1;
   const spendable = balance + upcomingIncome - upcomingExpense;
-  const perDay = Math.floor(spendable / daysLeft);
+  // 足りない時（マイナス）は 0円と表示し、不足額は警告で知らせる
+  const short = spendable < 0;
+  const perDay = Math.max(0, Math.floor(spendable / daysLeft));
 
   const byCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -77,16 +80,16 @@ export default function ReportTab() {
         </div>
         <div
           className={`mt-3 rounded-xl px-4 py-3 text-center ${
-            perDay < 0 ? "bg-rose-50 dark:bg-rose-950" : "bg-emerald-50 dark:bg-emerald-950"
+            short ? "bg-exp-soft" : "bg-zinc-100 dark:bg-zinc-800"
           }`}
         >
           <div className="text-xs text-zinc-600 dark:text-zinc-300">1日に使える目安</div>
-          <div className={`text-3xl font-bold tabular-nums ${perDay < 0 ? expenseText : ""}`}>
+          <div className={`text-3xl font-bold tabular-nums ${short ? expenseText : ""}`}>
             {yen.format(perDay)}
           </div>
-          {perDay < 0 && (
-            <div className="mt-1 text-xs text-rose-700 dark:text-rose-300">
-              ⚠ このままだと月末までにお金が足りません
+          {short && (
+            <div className="mt-1 text-xs font-semibold text-exp">
+              ⚠ 月末までに {yen.format(-spendable)} 足りません
             </div>
           )}
         </div>
@@ -111,7 +114,10 @@ export default function ReportTab() {
             {byCategory.map(([cat, amt]) => (
               <li key={cat} className="text-sm">
                 <div className="mb-1 flex justify-between">
-                  <span>{cat}</span>
+                  <span className="flex items-center gap-1.5">
+                    <span aria-hidden>{categoryIcon(cat, "expense")}</span>
+                    {cat}
+                  </span>
                   <span className="tabular-nums">
                     {yen.format(amt)}
                     <span className="ml-1 text-zinc-500">{Math.round((amt / expense) * 100)}%</span>
@@ -163,7 +169,7 @@ function BalanceCard({ balance, initialBalance }: { balance: number; initialBala
   return (
     <section className="rounded-2xl bg-zinc-900 p-5 text-white dark:bg-zinc-100 dark:text-zinc-900">
       <div className="text-sm opacity-70">今の残金</div>
-      <div className={`text-4xl font-bold tabular-nums ${balance < 0 ? "text-rose-400 dark:text-rose-600" : ""}`}>
+      <div className={`text-4xl font-bold tabular-nums ${balance < 0 ? "text-[#ff8a57] dark:text-[#c43700]" : ""}`}>
         {yen.format(balance)}
       </div>
       {editing ? (

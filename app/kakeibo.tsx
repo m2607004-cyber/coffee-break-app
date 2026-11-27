@@ -3,11 +3,10 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import InputTab from "./_components/input-tab";
 import CalendarTab from "./_components/calendar-tab";
-import ListTab from "./_components/list-tab";
 import ReportTab from "./_components/report-tab";
 import { applyRecurring } from "./lib/entries-store";
 
-type Tab = "input" | "calendar" | "list" | "report";
+type Tab = "input" | "calendar" | "report";
 
 const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
   {
@@ -28,12 +27,6 @@ const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
     ),
   },
   {
-    id: "list",
-    label: "明細",
-    title: "明細",
-    icon: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
-  },
-  {
     id: "report",
     label: "残金",
     title: "残金とグラフ",
@@ -42,6 +35,10 @@ const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
 ];
 
 const noopSubscribe = () => () => {};
+
+// 背景色のテーマ（globals.css の :root[data-bg] と対応）
+const BG_THEMES = ["cream", "mint", "sky", "lavender", "peach", "stone"];
+const BG_KEY = "kakeibo:bg:v1";
 
 export default function Kakeibo() {
   // 日付やlocalStorageはブラウザでのみ確定するため、ハイドレーション後に描画する
@@ -76,11 +73,25 @@ function KakeiboApp() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
+  // 起動するたびに背景色を切り替える（前回と同じ色にはしない）
+  useEffect(() => {
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(BG_KEY);
+    } catch {}
+    const choices = BG_THEMES.filter((b) => b !== last);
+    const next = choices[Math.floor(Math.random() * choices.length)];
+    document.documentElement.dataset.bg = next;
+    try {
+      localStorage.setItem(BG_KEY, next);
+    } catch {}
+  }, []);
+
   const current = TABS.find((t) => t.id === tab)!;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-zinc-50 dark:bg-zinc-950">
-      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col bg-app">
+      <header className="sticky top-0 z-10 border-b border-zinc-200 bg-app/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur dark:border-zinc-800">
         <h1 className="text-lg font-bold">{current.title}</h1>
       </header>
 
@@ -94,7 +105,6 @@ function KakeiboApp() {
             }}
           />
         )}
-        {tab === "list" && <ListTab />}
         {tab === "report" && <ReportTab />}
       </main>
 
@@ -110,10 +120,19 @@ function KakeiboApp() {
                 <button
                   onClick={() => changeTab(t.id)}
                   aria-current={active ? "page" : undefined}
-                  className={`flex w-full flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
-                    active ? "text-rose-600 dark:text-rose-400" : "text-zinc-500"
+                  className={`relative flex w-full flex-col items-center gap-0.5 py-2 text-[11px] ${
+                    active
+                      ? "font-bold text-zinc-900 dark:text-zinc-50"
+                      : "font-medium text-zinc-500 dark:text-zinc-400"
                   }`}
                 >
+                  {/* 選択中のタブは色だけでなく、上のバーと太字でも示す */}
+                  {active && (
+                    <span
+                      className="absolute inset-x-6 top-0 h-1 rounded-b-full bg-zinc-900 dark:bg-zinc-50"
+                      aria-hidden
+                    />
+                  )}
                   <svg
                     viewBox="0 0 24 24"
                     className="size-6"

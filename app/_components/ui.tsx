@@ -1,23 +1,81 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { deleteEntry, type Entry } from "../lib/entries-store";
+import { useEffect, type ReactNode } from "react";
+
+/** 画面の下から出てくるパネル。背景をタップするか Esc で閉じる */
+export function BottomSheet({
+  label,
+  onClose,
+  children,
+}: {
+  label: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-30 flex flex-col justify-end" role="dialog" aria-label={label}>
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/30"
+        aria-label={`${label}を閉じる`}
+        onClick={onClose}
+      />
+      <div className="relative mx-auto flex max-h-[80dvh] w-full max-w-md flex-col rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl dark:bg-zinc-900">
+        {children}
+      </div>
+    </div>
+  );
+}
+import { categoryIcon, deleteEntry, type Entry, type EntryType } from "../lib/entries-store";
+
+/** カテゴリのイラストを丸い背景に入れて表示する */
+export function CategoryIcon({
+  category,
+  type,
+  size = "md",
+}: {
+  category: string;
+  type: EntryType;
+  size?: "sm" | "md";
+}) {
+  return (
+    <span
+      aria-hidden
+      className={`grid shrink-0 place-items-center rounded-full ${
+        type === "income" ? "bg-inc-soft" : "bg-exp-soft"
+      } ${size === "sm" ? "size-7 text-base" : "size-9 text-xl"}`}
+    >
+      {categoryIcon(category, type)}
+    </span>
+  );
+}
 import { monthLabel, shiftMonth, yen } from "../lib/format";
 
 /** 明細の1行（カテゴリ・固定マーク・メモ・金額・削除ボタン） */
 export function EntryRow({ entry: e }: { entry: Entry }) {
   return (
-    <li className="flex items-center gap-3 px-4 py-3 text-sm">
-      <span className="flex-1 truncate">
-        <span className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800">
-          {e.category}
+    <li className="flex items-center gap-3 px-4 py-2.5 text-sm">
+      <CategoryIcon category={e.category} type={e.type} />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1">
+          <span className="truncate">{e.category}</span>
+          {e.recurringId && (
+            <span className="shrink-0 rounded bg-sched-soft px-1.5 py-0.5 text-xs text-sched">
+              固定
+            </span>
+          )}
         </span>
-        {e.recurringId && (
-          <span className="mr-1 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-900 dark:text-sky-200">
-            固定
-          </span>
+        {e.memo && (
+          <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{e.memo}</span>
         )}
-        <span className="text-zinc-600 dark:text-zinc-400">{e.memo}</span>
       </span>
       <span className={`tabular-nums font-medium ${e.type === "income" ? incomeText : expenseText}`}>
         {e.type === "income" ? "+" : "−"}
@@ -27,7 +85,7 @@ export function EntryRow({ entry: e }: { entry: Entry }) {
         onClick={() => {
           if (confirm("この記録を削除しますか？")) deleteEntry(e.id);
         }}
-        className="grid size-8 place-items-center text-zinc-400 active:text-rose-600"
+        className="grid size-8 place-items-center text-zinc-400 active:text-exp"
         aria-label="削除"
       >
         ✕
@@ -41,13 +99,13 @@ export const inputClass =
 
 /** 曜日の文字色（日曜=赤、土曜=青） */
 export function weekdayClass(dow: number) {
-  if (dow === 0) return "text-rose-600 dark:text-rose-400";
-  if (dow === 6) return "text-sky-600 dark:text-sky-400";
+  if (dow === 0) return "text-exp";
+  if (dow === 6) return "text-inc";
   return "";
 }
 
-export const incomeText = "text-emerald-600 dark:text-emerald-400";
-export const expenseText = "text-rose-600 dark:text-rose-400";
+export const incomeText = "text-inc";
+export const expenseText = "text-exp";
 
 export function Card({
   title,
@@ -100,7 +158,7 @@ export function Stat({
   className?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-xl bg-zinc-100 px-3 py-2 dark:bg-zinc-800">
+    <div className="min-w-0 rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="text-xs text-zinc-500 dark:text-zinc-400">{label}</div>
       <div className={`truncate font-bold tabular-nums ${className}`}>{yen.format(value)}</div>
     </div>
@@ -124,8 +182,8 @@ export function TypeToggle({
           className={`flex-1 rounded-lg py-2 text-sm font-semibold ${
             value === t
               ? t === "expense"
-                ? "bg-rose-600 text-white"
-                : "bg-emerald-600 text-white"
+                ? "bg-exp text-white dark:text-zinc-950"
+                : "bg-inc text-white dark:text-zinc-950"
               : "text-zinc-600 dark:text-zinc-300"
           }`}
         >

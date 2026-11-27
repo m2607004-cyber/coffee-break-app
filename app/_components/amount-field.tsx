@@ -215,7 +215,7 @@ function CalcSheet({
           {hasOp && (
             <div className="mt-1 text-xl font-semibold text-zinc-600 dark:text-zinc-300">
               {rounded === null ? (
-                <span className="text-base text-rose-600 dark:text-rose-400">計算できません</span>
+                <span className="text-base text-exp">⚠ 計算できません</span>
               ) : (
                 <>
                   = {fmt.format(rounded)}
@@ -243,7 +243,7 @@ function CalcSheet({
                   done
                     ? "row-span-2 h-auto bg-zinc-900 text-lg text-white dark:bg-zinc-100 dark:text-zinc-900"
                     : isOp(k)
-                      ? "bg-amber-500 text-white"
+                      ? "bg-key-op text-zinc-950"
                       : fn
                         ? "bg-zinc-300 dark:bg-zinc-700"
                         : "bg-zinc-100 dark:bg-zinc-800"

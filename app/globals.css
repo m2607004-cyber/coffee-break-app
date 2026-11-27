@@ -1,31 +1,85 @@
 @import "tailwindcss";
 
+/*
+ * 配色はカラーユニバーサルデザイン（CUD推奨配色セット ver.4）に合わせています。
+ * - 収入 = 青、支出 = 朱色。赤と緑の組み合わせは使わない（P型・D型の人に見分けにくいため）
+ * - 色だけに頼らず、「+」「−」の記号や文字ラベルを必ず併用する
+ * - 文字色は背景とのコントラスト比 4.5:1 以上をスクリプトで確認済み
+ */
 :root {
   --background: #fafafa;
   --foreground: #171717;
-  /* グラフの色（色覚多様性チェック済み。凡例とタップで値表示を併用） */
-  --chart-income: #00b894;
-  --chart-expense: #ec4647;
-}
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --income: #005aff; /* CUD 青 */
+  --expense: #c43700; /* CUD 赤（朱）を文字用に濃くしたもの */
+  --income-soft: #e8f0ff;
+  --expense-soft: #ffeee6;
+  --scheduled: #990099; /* CUD 紫：固定収支・予定 */
+  --scheduled-soft: #f7e6f7;
+  --key-op: #f6aa00; /* CUD オレンジ：電卓の記号キー（黒文字） */
+
+  /* グラフ（色覚シミュレーションで検証済み。凡例とタップで値表示を併用） */
+  --chart-income: #005aff;
+  --chart-expense: #ff4b00;
+
+  /* アプリの背景色（起動するたびに data-bg で切り替わる） */
+  --app-bg: #f4f4f2;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    --chart-income: #00a888;
-    --chart-expense: #eb6263;
+
+    --income: #5ca8ff;
+    --expense: #ff8a57;
+    --income-soft: #0c2550;
+    --expense-soft: #3d1a0a;
+    --scheduled: #e58ae5;
+    --scheduled-soft: #3a123a;
+
+    --chart-income: #4d9bff;
+    --chart-expense: #f25a1c;
+
+    --app-bg: #111111;
   }
 }
 
+/* 背景色のテーマ（どれも淡い色で、文字のコントラストを保てるものだけ） */
+:root[data-bg="cream"] { --app-bg: #fff8e7; }
+:root[data-bg="mint"] { --app-bg: #ecf7f1; }
+:root[data-bg="sky"] { --app-bg: #edf4fc; }
+:root[data-bg="lavender"] { --app-bg: #f3f0fb; }
+:root[data-bg="peach"] { --app-bg: #fff1ea; }
+:root[data-bg="stone"] { --app-bg: #f4f4f2; }
+
+@media (prefers-color-scheme: dark) {
+  :root[data-bg="cream"] { --app-bg: #17140d; }
+  :root[data-bg="mint"] { --app-bg: #0d1612; }
+  :root[data-bg="sky"] { --app-bg: #0d1219; }
+  :root[data-bg="lavender"] { --app-bg: #13111a; }
+  :root[data-bg="peach"] { --app-bg: #19110d; }
+  :root[data-bg="stone"] { --app-bg: #121211; }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-app: var(--app-bg);
+  --color-inc: var(--income);
+  --color-exp: var(--expense);
+  --color-inc-soft: var(--income-soft);
+  --color-exp-soft: var(--expense-soft);
+  --color-sched: var(--scheduled);
+  --color-sched-soft: var(--scheduled-soft);
+  --color-key-op: var(--key-op);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
+  background: var(--app-bg);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.4s;
 }

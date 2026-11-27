@@ -2,7 +2,7 @@
 
 import { deleteRecurringRule, useRecurringRules } from "../lib/entries-store";
 import { monthLabel, yen } from "../lib/format";
-import { Card, expenseText, incomeText } from "./ui";
+import { Card, CategoryIcon, expenseText, incomeText } from "./ui";
 
 /** 登録中の固定収支（毎月くり返し）の一覧。削除するとそれ以降は自動記録されない */
 export default function RecurringList() {
@@ -25,9 +25,10 @@ export default function RecurringList() {
       <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
         {rules.map((r) => (
           <li key={r.id} className="flex items-center gap-3 py-3 text-sm">
-            <span className="w-12 shrink-0 text-zinc-500">
+            <span className="w-10 shrink-0 text-zinc-500">
               {r.day === 31 ? "月末" : `${r.day}日`}
             </span>
+            <CategoryIcon category={r.category} type={r.type} size="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate">
                 {r.category}
@@ -44,7 +45,7 @@ export default function RecurringList() {
                 if (confirm("この固定収支をやめますか？\n（すでに記録された明細は残ります）"))
                   deleteRecurringRule(r.id);
               }}
-              className="grid size-8 place-items-center text-zinc-400 active:text-rose-600"
+              className="grid size-8 place-items-center text-zinc-400 active:text-exp"
               aria-label="固定収支をやめる"
             >
               ✕

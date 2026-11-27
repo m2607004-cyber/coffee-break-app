@@ -5,13 +5,22 @@ import {
   addEntry,
   addRecurringRule,
   categoriesFor,
+  categoryIcon,
   useEntries,
   type EntryType,
 } from "../lib/entries-store";
 import { shiftDay, todayStr, yen } from "../lib/format";
 import AmountField from "./amount-field";
 import RecurringList from "./recurring-list";
-import { Card, expenseText, incomeText, inputClass, TypeToggle, weekdayClass } from "./ui";
+import {
+  Card,
+  CategoryIcon,
+  expenseText,
+  incomeText,
+  inputClass,
+  TypeToggle,
+  weekdayClass,
+} from "./ui";
 
 const arrowBtn =
   "grid size-12 shrink-0 place-items-center rounded-lg border border-zinc-300 text-2xl active:bg-zinc-100 dark:border-zinc-700 dark:active:bg-zinc-800";
@@ -141,22 +150,38 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-zinc-500">カテゴリ</label>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCategory(c)}
-                  className={`rounded-full border px-3 py-1.5 text-sm ${
-                    category === c
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                      : "border-zinc-300 dark:border-zinc-700"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <span className="mb-1 block text-sm text-zinc-500">カテゴリ</span>
+            <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="カテゴリ">
+              {categories.map((c) => {
+                const active = category === c;
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setCategory(c)}
+                    className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 ${
+                      active
+                        ? type === "expense"
+                          ? "border-exp bg-exp-soft ring-1 ring-exp"
+                          : "border-inc bg-inc-soft ring-1 ring-inc"
+                        : "border-zinc-200 active:bg-zinc-100 dark:border-zinc-800 dark:active:bg-zinc-800"
+                    }`}
+                  >
+                    <span className="text-2xl leading-none" aria-hidden>
+                      {categoryIcon(c, type)}
+                    </span>
+                    <span
+                      className={`w-full truncate text-center text-[11px] leading-tight ${
+                        active ? "font-bold" : "text-zinc-600 dark:text-zinc-300"
+                      }`}
+                    >
+                      {c}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -206,8 +231,8 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
 
           <button
             type="submit"
-            className={`w-full rounded-xl py-3.5 font-bold text-white active:opacity-80 ${
-              type === "expense" ? "bg-rose-600" : "bg-emerald-600"
+            className={`w-full rounded-xl py-3.5 font-bold text-white active:opacity-80 dark:text-zinc-950 ${
+              type === "expense" ? "bg-exp" : "bg-inc"
             }`}
           >
             {recurring
@@ -232,6 +257,7 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
                 <span className="w-11 shrink-0 tabular-nums text-zinc-500">
                   {Number(e.date.slice(5, 7))}/{Number(e.date.slice(8, 10))}
                 </span>
+                <CategoryIcon category={e.category} type={e.type} size="sm" />
                 <span className="flex-1 truncate">
                   {e.category}
                   {e.memo && <span className="text-zinc-500"> ・{e.memo}</span>}

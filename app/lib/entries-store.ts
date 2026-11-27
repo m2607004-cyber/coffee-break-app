@@ -54,6 +54,36 @@ export const EXPENSE_CATEGORIES = [
 
 export const INCOME_CATEGORIES = ["バイト", "仕送り", "奨学金", "お小遣い", "その他"];
 
+/** カテゴリのイラスト（絵文字）。以前のバージョンのカテゴリ名にも対応 */
+const CATEGORY_ICONS: Record<string, string> = {
+  食費: "🍙",
+  外食: "🍜",
+  交通: "🚃",
+  日用品: "🧻",
+  "趣味・娯楽": "🎮",
+  娯楽: "🎮",
+  交際費: "🎉",
+  "衣服・美容": "👕",
+  衣服: "👕",
+  学業: "📚",
+  通信: "📱",
+  サブスク: "📺",
+  住居: "🏠",
+  水道光熱: "💡",
+  医療: "🏥",
+  バイト: "💼",
+  仕送り: "💌",
+  奨学金: "🎓",
+  お小遣い: "👛",
+  給与: "💴",
+  賞与: "🎁",
+  副業: "💻",
+};
+
+export function categoryIcon(category: string, type: EntryType) {
+  return CATEGORY_ICONS[category] ?? (type === "income" ? "💰" : "📦");
+}
+
 export function categoriesFor(type: EntryType) {
   return type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 }

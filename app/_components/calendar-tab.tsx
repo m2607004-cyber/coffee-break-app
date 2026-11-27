@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { scheduledInMonth, useEntries, useRecurringRules } from "../lib/entries-store";
-import { daysInMonth, pad, todayStr, yen } from "../lib/format";
-import { Card, EntryRow, expenseText, incomeText, MonthSwitcher, Stat, weekdayClass } from "./ui";
+import { daysInMonth, pad, shiftDay, todayStr, yen } from "../lib/format";
+import { BottomSheet, Card, CategoryIcon, EntryRow, expenseText, incomeText, MonthSwitcher, Stat, weekdayClass } from "./ui";
 
 const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+
+const dayArrow =
+  "grid size-10 shrink-0 place-items-center rounded-full border border-zinc-300 text-xl active:bg-zinc-100 dark:border-zinc-700 dark:active:bg-zinc-800";
 
 /** カレンダーのマス用の短い金額表記（1万円以上は「1.2万」） */
 function compact(n: number) {
@@ -18,6 +21,8 @@ export default function CalendarTab({ onAddOnDate }: { onAddOnDate: (date: strin
   const rules = useRecurringRules();
   const today = todayStr();
   const [selected, setSelected] = useState(today);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const closeSheet = useCallback(() => setSheetOpen(false), []);
   const month = selected.slice(0, 7);
 
   // 日付ごとの合計
@@ -56,6 +61,8 @@ export default function CalendarTab({ onAddOnDate }: { onAddOnDate: (date: strin
   };
 
   const dayEntries = entries.filter((e) => e.date === selected);
+  const dayIncome = dayEntries.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
+  const dayExpense = dayEntries.filter((e) => e.type === "expense").reduce((s, e) => s + e.amount, 0);
   const daySchedule = scheduled.filter((s) => s.date === selected);
   const selDow = new Date(selected + "T00:00:00").getDay();
 
@@ -86,7 +93,10 @@ export default function CalendarTab({ onAddOnDate }: { onAddOnDate: (date: strin
             return (
               <button
                 key={date}
-                onClick={() => setSelected(date)}
+                onClick={() => {
+                  setSelected(date);
+                  setSheetOpen(true);
+                }}
                 aria-pressed={isSel}
                 aria-label={`${Number(date.slice(8))}日${
                   d ? `、収入${d.income}円、支出${d.expense}円` : ""
@@ -100,14 +110,14 @@ export default function CalendarTab({ onAddOnDate }: { onAddOnDate: (date: strin
                 <span className="flex items-center justify-between">
                   <span
                     className={`grid size-5 place-items-center rounded-full text-xs font-semibold ${
-                      isToday && !isSel ? "bg-rose-600 text-white" : isSel ? "" : weekdayClass(dow)
+                      isToday && !isSel ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : isSel ? "" : weekdayClass(dow)
                     }`}
                   >
                     {Number(date.slice(8))}
                   </span>
                   {scheduledDates.has(date) && (
                     <span
-                      className={`mr-0.5 size-1.5 rounded-full ${isSel ? "bg-current" : "bg-sky-500"}`}
+                      className={`mr-0.5 size-1.5 rounded-full ${isSel ? "bg-current" : "bg-sched"}`}
                       aria-hidden
                     />
                   )}
@@ -131,50 +141,87 @@ export default function CalendarTab({ onAddOnDate }: { onAddOnDate: (date: strin
           })}
         </div>
         <p className="mt-2 flex items-center gap-1 px-1 text-xs text-zinc-500">
-          <span className="size-1.5 rounded-full bg-sky-500" aria-hidden />
+          <span className="size-1.5 rounded-full bg-sched" aria-hidden />
           固定収支の予定日
+          <span className="ml-auto">日付をタップすると明細が見られます</span>
         </p>
       </Card>
 
-      <Card className="!p-0">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-          <h3 className="font-semibold">
-            {Number(selected.slice(5, 7))}月{Number(selected.slice(8))}日（
-            <span className={weekdayClass(selDow)}>{WEEK[selDow]}</span>）
-          </h3>
-          <button
-            onClick={() => onAddOnDate(selected)}
-            className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-bold text-white active:opacity-80 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            ＋ この日に記録
-          </button>
-        </div>
-        {dayEntries.length === 0 && daySchedule.length === 0 ? (
-          <p className="px-4 py-3 text-sm text-zinc-500">この日の記録はありません。</p>
-        ) : (
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {dayEntries.map((e) => (
-              <EntryRow key={e.id} entry={e} />
-            ))}
-            {daySchedule.map(({ rule: r }) => (
-              <li key={r.id} className="flex items-center gap-3 px-4 py-3 text-sm text-zinc-500">
-                <span className="flex-1 truncate">
-                  <span className="mr-1 rounded border border-dashed border-sky-400 px-1.5 py-0.5 text-xs text-sky-700 dark:text-sky-300">
-                    予定
-                  </span>
-                  {r.category}
-                  {r.memo && ` ・${r.memo}`}
-                </span>
-                <span className="tabular-nums">
-                  {r.type === "income" ? "+" : "−"}
-                  {yen.format(r.amount)}
-                </span>
-                <span className="size-8" aria-hidden />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {sheetOpen && (
+        <BottomSheet label="この日の明細" onClose={closeSheet}>
+          <div className="flex items-center gap-2 border-b border-zinc-200 px-3 py-3 dark:border-zinc-800">
+            <button
+              onClick={() => setSelected(shiftDay(selected, -1))}
+              className={dayArrow}
+              aria-label="前の日"
+            >
+              ‹
+            </button>
+            <div className="flex-1 text-center">
+              <h3 className="font-bold">
+                {Number(selected.slice(5, 7))}月{Number(selected.slice(8))}日（
+                <span className={weekdayClass(selDow)}>{WEEK[selDow]}</span>）
+              </h3>
+              <p className="text-xs tabular-nums text-zinc-500">
+                収入 <span className={incomeText}>{yen.format(dayIncome)}</span>
+                {" ／ "}
+                支出 <span className={expenseText}>{yen.format(dayExpense)}</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setSelected(shiftDay(selected, 1))}
+              className={dayArrow}
+              aria-label="次の日"
+            >
+              ›
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {dayEntries.length === 0 && daySchedule.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-zinc-500">この日の記録はありません。</p>
+            ) : (
+              <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                {dayEntries.map((e) => (
+                  <EntryRow key={e.id} entry={e} />
+                ))}
+                {daySchedule.map(({ rule: r }) => (
+                  <li key={r.id} className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-500">
+                    <span className="opacity-60">
+                      <CategoryIcon category={r.category} type={r.type} />
+                    </span>
+                    <span className="flex-1 truncate">
+                      <span className="mr-1 rounded border border-dashed border-sched px-1.5 py-0.5 text-xs text-sched">
+                        予定
+                      </span>
+                      {r.category}
+                      {r.memo && ` ・${r.memo}`}
+                    </span>
+                    <span className="tabular-nums">
+                      {r.type === "income" ? "+" : "−"}
+                      {yen.format(r.amount)}
+                    </span>
+                    <span className="size-8" aria-hidden />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="flex gap-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
+            <button
+              onClick={closeSheet}
+              className="flex-1 rounded-xl border border-zinc-300 py-3 text-sm font-semibold dark:border-zinc-700"
+            >
+              閉じる
+            </button>
+            <button
+              onClick={() => onAddOnDate(selected)}
+              className="flex-[2] rounded-xl bg-zinc-900 py-3 text-sm font-bold text-white active:opacity-80 dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              ＋ この日に記録
+            </button>
+          </div>
+        </BottomSheet>
+      )}
     </div>
   );
 }
