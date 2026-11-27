@@ -23,6 +23,17 @@
   --chart-income: #005aff;
   --chart-expense: #ff4b00;
 
+  /* 円グラフの8色（CUD推奨色をもとに検証済み。凡例に名前と金額を必ず並べる） */
+  --pie-1: #005aff;
+  --pie-2: #e89a00;
+  --pie-3: #03af7a;
+  --pie-4: #990099;
+  --pie-5: #4dc4ff;
+  --pie-6: #ff4b00;
+  --pie-7: #804000;
+  --pie-8: #ff8082;
+  --pie-other: #a1a1aa;
+
   /* アプリの背景色（起動するたびに data-bg で切り替わる） */
   --app-bg: #f4f4f2;
 }
@@ -41,6 +52,17 @@
 
     --chart-income: #4d9bff;
     --chart-expense: #f25a1c;
+
+    /* ダーク背景用に検証済みの8色 */
+    --pie-1: #338ced;
+    --pie-2: #e76624;
+    --pie-3: #00a888;
+    --pie-4: #d28e05;
+    --pie-5: #e24d8b;
+    --pie-6: #0aac23;
+    --pie-7: #9887ef;
+    --pie-8: #eb6263;
+    --pie-other: #71717a;
 
     --app-bg: #111111;
   }

@@ -202,6 +202,20 @@ const budgetStore = createStore<Budget>(
     (v as Budget).categories !== null,
 );
 
+/** カテゴリごとの予算の合計 */
+export function categoryBudgetSum(budget: Budget) {
+  return Object.values(budget.categories).reduce((s, v) => s + (v > 0 ? v : 0), 0);
+}
+
+/**
+ * 1か月の予算。カテゴリごとの予算があればその合計を使い、
+ * なければ自分で入れた1か月の予算を使う（どちらもなければ null）
+ */
+export function monthlyBudget(budget: Budget): number | null {
+  const sum = categoryBudgetSum(budget);
+  return sum > 0 ? sum : budget.total;
+}
+
 export function useBudget() {
   return useSyncExternalStore(budgetStore.subscribe, budgetStore.get, () => EMPTY_BUDGET);
 }

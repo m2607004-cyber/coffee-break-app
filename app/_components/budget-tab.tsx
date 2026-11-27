@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   categoriesFor,
+  monthlyBudget,
   setBudget,
   useBudget,
   useCustomCategories,
@@ -60,6 +61,7 @@ function StatusText({ spent, budget }: { spent: number; budget: number }) {
 export default function BudgetTab() {
   const entries = useEntries();
   const budget = useBudget();
+  const total = monthlyBudget(budget);
   const custom = useCustomCategories();
   const today = todayStr();
   const thisMonth = today.slice(0, 7);
@@ -80,7 +82,7 @@ export default function BudgetTab() {
   const budgeted = categories.filter((c) => budget.categories[c] > 0);
   // 予算はないけれど使ったカテゴリ（過去に削除したカテゴリも含む）
   const unbudgeted = [...spentBy.keys()].filter((c) => !(budget.categories[c] > 0));
-  const hasAnyBudget = budget.total !== null || budgeted.length > 0;
+  const hasAnyBudget = total !== null || budgeted.length > 0;
 
   if (editing) {
     return <BudgetEditor initial={budget} categories={categories} onDone={() => setEditing(false)} />;
@@ -89,8 +91,8 @@ export default function BudgetTab() {
   const isThisMonth = month === thisMonth;
   const daysLeft = daysInMonth(thisMonth) - Number(today.slice(8, 10)) + 1;
   const perDay =
-    budget.total !== null && isThisMonth
-      ? Math.max(0, Math.floor((budget.total - totalSpent) / daysLeft))
+    total !== null && isThisMonth
+      ? Math.max(0, Math.floor((total - totalSpent) / daysLeft))
       : null;
 
   return (
@@ -111,7 +113,7 @@ export default function BudgetTab() {
         </Card>
       ) : (
         <>
-          {budget.total !== null && (
+          {total !== null && (
             <Card title={`${monthLabel(month)}の予算`}>
               <div className="mb-2 flex items-end justify-between gap-2">
                 <div>
@@ -119,14 +121,15 @@ export default function BudgetTab() {
                   <div className="text-2xl font-bold tabular-nums">{yen.format(totalSpent)}</div>
                 </div>
                 <div className="text-right text-sm tabular-nums text-zinc-500">
-                  予算 {yen.format(budget.total)}
+                  予算 {yen.format(total)}
+                  {budgeted.length > 0 && <div className="text-xs">（カテゴリの合計）</div>}
                 </div>
               </div>
-              <ProgressBar spent={totalSpent} budget={budget.total} thick />
+              <ProgressBar spent={totalSpent} budget={total} thick />
               <div className="mt-2 flex items-center justify-between text-sm tabular-nums">
-                <StatusText spent={totalSpent} budget={budget.total} />
+                <StatusText spent={totalSpent} budget={total} />
                 <span className="text-zinc-500">
-                  {Math.round((totalSpent / Math.max(1, budget.total)) * 100)}%
+                  {Math.round((totalSpent / Math.max(1, total)) * 100)}%
                 </span>
               </div>
               {perDay !== null && (
@@ -202,7 +205,10 @@ function BudgetEditor({
   categories: string[];
   onDone: () => void;
 }) {
-  const [total, setTotal] = useState(initial.total !== null ? String(initial.total) : "");
+  const [total, setTotal] = useState(() => {
+    const m = monthlyBudget(initial);
+    return m !== null ? String(m) : "";
+  });
   const [cats, setCats] = useState<Record<string, string>>(() =>
     Object.fromEntries(categories.map((c) => [c, initial.categories[c] ? String(initial.categories[c]) : ""])),
   );
@@ -210,24 +216,47 @@ function BudgetEditor({
   const catSum = Object.values(cats).reduce((s, v) => s + (Number(v) || 0), 0);
   const totalNum = Number(total) || 0;
 
+  // カテゴリの予算があれば、その合計が1か月の予算になる
+  const autoTotal = catSum > 0;
+
   const save = () => {
     const categoriesBudget: Record<string, number> = {};
     for (const [c, v] of Object.entries(cats)) if (Number(v) > 0) categoriesBudget[c] = Number(v);
-    setBudget({ total: totalNum > 0 ? totalNum : null, categories: categoriesBudget });
+    const monthly = autoTotal ? catSum : totalNum;
+    setBudget({ total: monthly > 0 ? monthly : null, categories: categoriesBudget });
     onDone();
   };
 
   return (
     <div className="space-y-4">
       <Card title="1か月の予算">
-        <p className="mb-2 text-xs text-zinc-500">
-          支出全体で、1か月にいくらまで使うかの目標です。毎月同じ予算を使います。空にすると予算なしになります。
-        </p>
-        <AmountField large value={total} onChange={setTotal} label="1か月の予算" />
+        {autoTotal ? (
+          <>
+            <p className="mb-2 text-xs text-zinc-500">
+              下のカテゴリごとの予算の合計が、自動で1か月の予算になります。
+            </p>
+            <div
+              className="flex items-baseline justify-end gap-1 rounded-lg border border-dashed border-zinc-300 px-3 py-3 dark:border-zinc-700"
+              aria-live="polite"
+            >
+              <span className="mr-auto text-xs text-zinc-500">カテゴリの合計</span>
+              <span className="text-2xl font-bold tabular-nums">{yen.format(catSum)}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-2 text-xs text-zinc-500">
+              支出全体で、1か月にいくらまで使うかの目標です。毎月同じ予算を使います。下でカテゴリごとの予算を入れると、その合計が自動で1か月の予算になります。
+            </p>
+            <AmountField large value={total} onChange={setTotal} label="1か月の予算" />
+          </>
+        )}
       </Card>
 
       <Card title="カテゴリごとの予算（任意）">
-        <p className="mb-3 text-xs text-zinc-500">決めたいカテゴリだけ入れてください。空のカテゴリは予算なしです。</p>
+        <p className="mb-3 text-xs text-zinc-500">
+          決めたいカテゴリだけ入れてください。空のカテゴリは予算なしです。入れた予算の合計が1か月の予算になります。
+        </p>
         <ul className="space-y-2">
           {categories.map((c) => (
             <li key={c} className="flex items-center gap-2">
@@ -243,31 +272,32 @@ function BudgetEditor({
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex justify-between border-t border-zinc-200 pt-2 text-sm dark:border-zinc-800">
-          <span>カテゴリの合計</span>
+        <div className="mt-3 flex justify-between border-t border-zinc-200 pt-2 text-sm font-bold dark:border-zinc-800">
+          <span>合計（＝1か月の予算）</span>
           <span className="tabular-nums">{yen.format(catSum)}</span>
         </div>
-        {totalNum > 0 && catSum > totalNum && (
-          <p className="mt-2 rounded-lg bg-exp-soft px-3 py-2 text-xs font-semibold text-exp">
-            ⚠ カテゴリの合計が1か月の予算を {yen.format(catSum - totalNum)} 超えています
-          </p>
-        )}
       </Card>
 
-      <div className="flex gap-2">
-        <button
-          onClick={onDone}
-          className="flex-1 rounded-xl border border-zinc-300 bg-white py-3 text-sm font-semibold dark:border-zinc-700 dark:bg-zinc-900"
-        >
-          キャンセル
-        </button>
-        <button
-          onClick={save}
-          className="flex-[2] rounded-xl bg-zinc-900 py-3 font-bold text-white active:opacity-80 dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          保存する
-        </button>
+      {/* キャンセル・保存ボタンは画面下（タブバーのすぐ上）の中央に固定。スクロールしても動かない */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--nav-h)+env(safe-area-inset-bottom))] z-20">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-md gap-2 bg-gradient-to-t from-app from-70% to-transparent px-4 pb-2 pt-5">
+          <button
+            onClick={onDone}
+            className="flex-1 rounded-xl border border-zinc-300 bg-white py-3.5 text-sm font-semibold shadow-lg active:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:active:bg-zinc-800"
+          >
+            キャンセル
+          </button>
+          <button
+            onClick={save}
+            className="flex-[2] rounded-xl bg-zinc-900 py-3.5 font-bold text-white shadow-lg active:opacity-80 dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            保存する
+          </button>
+        </div>
       </div>
+
+      {/* 固定ボタンに隠れないよう、下に余白を取る */}
+      <div className="h-20" aria-hidden />
     </div>
   );
 }
