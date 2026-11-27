@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #fafafa;
   --foreground: #171717;
+  /* グラフの色（色覚多様性チェック済み。凡例とタップで値表示を併用） */
+  --chart-income: #00b894;
+  --chart-expense: #ec4647;
 }
 
 @theme inline {
@@ -16,6 +19,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --chart-income: #00a888;
+    --chart-expense: #eb6263;
   }
 }
 
