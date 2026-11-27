@@ -80,12 +80,31 @@ const CATEGORY_ICONS: Record<string, string> = {
   副業: "💻",
 };
 
+/** 自分で追加したカテゴリ */
+export type CustomCategory = { name: string; icon: string };
+export type CustomCategories = Record<EntryType, CustomCategory[]>;
+
+/** カテゴリを追加する時に選べるイラスト */
+export const ICON_CHOICES = [
+  "☕", "🍔", "🍰", "🍺", "🛒", "🧴", "💊", "💄",
+  "💇", "🎤", "🎬", "🎧", "📷", "🎨", "⚽", "🏋️",
+  "✈️", "🚲", "🚕", "⛽", "🐶", "🌱", "🎁", "💻",
+  "📝", "🧸", "🎓", "🏆", "💴", "🪙", "💳", "📈",
+];
+
 export function categoryIcon(category: string, type: EntryType) {
-  return CATEGORY_ICONS[category] ?? (type === "income" ? "💰" : "📦");
+  return (
+    CATEGORY_ICONS[category] ??
+    customStore.get()[type].find((c) => c.name === category)?.icon ??
+    (type === "income" ? "💰" : "📦")
+  );
 }
 
-export function categoriesFor(type: EntryType) {
-  return type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+/** 選べるカテゴリの一覧。追加したカテゴリは「その他」の前に入る */
+export function categoriesFor(type: EntryType, custom: CustomCategories = customStore.get()) {
+  const base = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const others = base[base.length - 1];
+  return [...base.slice(0, -1), ...custom[type].map((c) => c.name), others];
 }
 
 /** localStorage に保存する小さなストア（useSyncExternalStore 用） */
@@ -147,6 +166,16 @@ const settingsStore = createStore<Settings>(
   (v): v is Settings =>
     typeof v === "object" && v !== null && typeof (v as Settings).initialBalance === "number",
 );
+const EMPTY_CUSTOM: CustomCategories = { expense: [], income: [] };
+const customStore = createStore<CustomCategories>(
+  "kakeibo:categories:v1",
+  EMPTY_CUSTOM,
+  (v): v is CustomCategories =>
+    typeof v === "object" &&
+    v !== null &&
+    Array.isArray((v as CustomCategories).expense) &&
+    Array.isArray((v as CustomCategories).income),
+);
 
 export function useEntries() {
   return useSyncExternalStore(entriesStore.subscribe, entriesStore.get, () => EMPTY_ENTRIES);
@@ -158,6 +187,27 @@ export function useRecurringRules() {
 
 export function useSettings() {
   return useSyncExternalStore(settingsStore.subscribe, settingsStore.get, () => DEFAULT_SETTINGS);
+}
+
+export function useCustomCategories() {
+  return useSyncExternalStore(customStore.subscribe, customStore.get, () => EMPTY_CUSTOM);
+}
+
+/** カテゴリを追加する。うまくいかない時はその理由を返す */
+export function addCustomCategory(type: EntryType, rawName: string, icon: string): string | null {
+  const name = rawName.trim();
+  if (!name) return "カテゴリ名を入力してください";
+  if (name.length > 10) return "カテゴリ名は10文字までです";
+  if (categoriesFor(type).includes(name)) return "同じ名前のカテゴリがすでにあります";
+  const current = customStore.get();
+  customStore.set({ ...current, [type]: [...current[type], { name, icon }] });
+  return null;
+}
+
+/** 追加したカテゴリを消す。そのカテゴリで付けた過去の記録は残る */
+export function deleteCustomCategory(type: EntryType, name: string) {
+  const current = customStore.get();
+  customStore.set({ ...current, [type]: current[type].filter((c) => c.name !== name) });
 }
 
 export function addEntry(entry: Omit<Entry, "id">) {

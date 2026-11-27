@@ -8,6 +8,7 @@
  */
 :root {
   --background: #fafafa;
+  --nav-h: 3.75rem; /* 下のタブバーの高さ（記録ボタンの位置合わせに使う） */
   --foreground: #171717;
 
   --income: #005aff; /* CUD 青 */

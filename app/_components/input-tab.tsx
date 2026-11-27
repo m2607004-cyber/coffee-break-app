@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   addEntry,
   addRecurringRule,
   categoriesFor,
   categoryIcon,
+  useCustomCategories,
   useEntries,
   type EntryType,
 } from "../lib/entries-store";
 import { shiftDay, todayStr, yen } from "../lib/format";
 import AmountField from "./amount-field";
+import CategoryEditor from "./category-editor";
 import RecurringList from "./recurring-list";
 import {
   Card,
@@ -29,14 +31,18 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
   const entries = useEntries();
   const [type, setType] = useState<EntryType>("expense");
   const [date, setDate] = useState(() => initialDate ?? todayStr());
-  const [category, setCategory] = useState(categoriesFor("expense")[0]);
+  const [pickedCategory, setCategory] = useState(() => categoriesFor("expense")[0]);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const custom = useCustomCategories();
   const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [recurring, setRecurring] = useState(false);
 
-  const categories = categoriesFor(type);
+  const categories = categoriesFor(type, custom);
+  // 選んでいたカテゴリが削除された時は、先頭のカテゴリにする
+  const category = categories.includes(pickedCategory) ? pickedCategory : categories[0];
   const today = todayStr();
   const dow = new Date((date || today) + "T00:00:00").getDay();
   const day = Number(date.slice(8, 10)) || 1;
@@ -44,7 +50,7 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
 
   const changeType = (t: EntryType) => {
     setType(t);
-    setCategory(categoriesFor(t)[0]);
+    setCategory(categoriesFor(t, custom)[0]);
   };
 
   const submit = (ev: React.FormEvent) => {
@@ -74,6 +80,13 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
     setMemo("");
     setRecurring(false);
   };
+
+  // 「記録しました」は数秒で消す
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => setSaved(null), 3000);
+    return () => clearTimeout(t);
+  }, [saved]);
 
   const recent = [...entries]
     .sort((a, b) => b.date.localeCompare(a.date) || 0)
@@ -142,11 +155,6 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
                 setError(false);
               }}
             />
-            {error && (
-              <p role="alert" className={`mt-1 text-sm ${expenseText}`}>
-                金額を入力してください
-              </p>
-            )}
           </div>
 
           <div>
@@ -182,6 +190,16 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => setEditorOpen(true)}
+                className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-zinc-400 px-1 py-2 text-zinc-600 active:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:active:bg-zinc-800"
+              >
+                <span className="text-2xl leading-none" aria-hidden>
+                  ＋
+                </span>
+                <span className="text-[11px] leading-tight">追加</span>
+              </button>
             </div>
           </div>
 
@@ -229,23 +247,40 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
             )}
           </div>
 
-          <button
-            type="submit"
-            className={`w-full rounded-xl py-3.5 font-bold text-white active:opacity-80 dark:text-zinc-950 ${
-              type === "expense" ? "bg-exp" : "bg-inc"
-            }`}
-          >
-            {recurring
-              ? `毎月の${type === "expense" ? "支出" : "収入"}として登録`
-              : type === "expense"
-                ? "支出を記録"
-                : "収入を記録"}
-          </button>
-          {saved && (
-            <p role="status" className="text-center text-sm text-zinc-600 dark:text-zinc-300">
-              ✓ {saved}
-            </p>
-          )}
+          {/* 記録ボタンは画面下（タブバーのすぐ上）の中央に固定。スクロールしても動かない */}
+          <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--nav-h)+env(safe-area-inset-bottom))] z-20">
+            <div className="pointer-events-auto mx-auto w-full max-w-md bg-gradient-to-t from-app from-70% to-transparent px-4 pb-2 pt-5">
+              {error ? (
+                <p
+                  role="alert"
+                  className="mb-1.5 rounded-lg bg-exp-soft px-3 py-1.5 text-center text-sm font-semibold text-exp"
+                >
+                  ⚠ 金額を入力してください
+                </p>
+              ) : (
+                saved && (
+                  <p
+                    role="status"
+                    className="mb-1.5 truncate rounded-lg bg-white px-3 py-1.5 text-center text-sm shadow-sm dark:bg-zinc-800"
+                  >
+                    ✓ {saved}
+                  </p>
+                )
+              )}
+              <button
+                type="submit"
+                className={`w-full rounded-xl py-3.5 font-bold text-white shadow-lg active:opacity-80 dark:text-zinc-950 ${
+                  type === "expense" ? "bg-exp" : "bg-inc"
+                }`}
+              >
+                {recurring
+                  ? `毎月の${type === "expense" ? "支出" : "収入"}として登録`
+                  : type === "expense"
+                    ? "支出を記録"
+                    : "収入を記録"}
+              </button>
+            </div>
+          </div>
         </form>
       </Card>
 
@@ -275,6 +310,20 @@ export default function InputTab({ initialDate }: { initialDate?: string }) {
       )}
 
       <RecurringList />
+
+      {editorOpen && (
+        <CategoryEditor
+          type={type}
+          onClose={() => setEditorOpen(false)}
+          onAdded={(name) => {
+            setCategory(name);
+            setEditorOpen(false);
+          }}
+        />
+      )}
+
+      {/* 固定の記録ボタンに隠れないよう、下に余白を取る */}
+      <div className="h-24" aria-hidden />
     </div>
   );
 }

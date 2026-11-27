@@ -120,7 +120,7 @@ function KakeiboApp() {
                 <button
                   onClick={() => changeTab(t.id)}
                   aria-current={active ? "page" : undefined}
-                  className={`relative flex w-full flex-col items-center gap-0.5 py-2 text-[11px] ${
+                  className={`relative flex h-[var(--nav-h)] w-full flex-col items-center justify-center gap-0.5 text-[11px] ${
                     active
                       ? "font-bold text-zinc-900 dark:text-zinc-50"
                       : "font-medium text-zinc-500 dark:text-zinc-400"
