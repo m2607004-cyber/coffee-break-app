@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import CalcTab from "./_components/calc-tab";
 import InputTab from "./_components/input-tab";
+import CalendarTab from "./_components/calendar-tab";
 import ListTab from "./_components/list-tab";
-import RecurringTab from "./_components/recurring-tab";
 import ReportTab from "./_components/report-tab";
-import { applyRecurring, type EntryType } from "./lib/entries-store";
+import { applyRecurring } from "./lib/entries-store";
 
-type Tab = "input" | "list" | "recurring" | "calc" | "report";
+type Tab = "input" | "calendar" | "list" | "report";
 
 const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
   {
@@ -18,34 +17,21 @@ const TABS: { id: Tab; label: string; title: string; icon: ReactNode }[] = [
     icon: <path d="M12 5v14M5 12h14" />,
   },
   {
+    id: "calendar",
+    label: "カレンダー",
+    title: "カレンダー",
+    icon: (
+      <>
+        <rect x="3" y="4" width="18" height="18" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+      </>
+    ),
+  },
+  {
     id: "list",
     label: "明細",
     title: "明細",
     icon: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
-  },
-  {
-    id: "recurring",
-    label: "固定",
-    title: "固定収支",
-    icon: (
-      <>
-        <path d="M17 2l4 4-4 4" />
-        <path d="M3 11V9a3 3 0 0 1 3-3h15" />
-        <path d="M7 22l-4-4 4-4" />
-        <path d="M21 13v2a3 3 0 0 1-3 3H3" />
-      </>
-    ),
-  },
-  {
-    id: "calc",
-    label: "電卓",
-    title: "電卓",
-    icon: (
-      <>
-        <rect x="5" y="2" width="14" height="20" rx="2" />
-        <path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h.01M12 19h4" />
-      </>
-    ),
   },
   {
     id: "report",
@@ -72,11 +58,13 @@ export default function Kakeibo() {
 
 function KakeiboApp() {
   const [tab, setTab] = useState<Tab>("input");
-  const [draft, setDraft] = useState<{ key: number; amount: string; type: EntryType }>({
-    key: 0,
-    amount: "",
-    type: "expense",
-  });
+  // カレンダーから「この日に記録」した時に、入力画面へ渡す日付
+  const [inputDate, setInputDate] = useState<string | undefined>(undefined);
+
+  const changeTab = (t: Tab) => {
+    if (t === "input") setInputDate(undefined);
+    setTab(t);
+  };
 
   // 起動時・画面に戻ってきた時に、日付が来た固定収支を自動で記録する
   useEffect(() => {
@@ -97,24 +85,16 @@ function KakeiboApp() {
       </header>
 
       <main className="flex-1 px-4 pb-28 pt-4">
-        {tab === "input" && (
-          <InputTab
-            key={draft.key}
-            initialAmount={draft.amount}
-            initialType={draft.type}
-            onOpenCalc={() => setTab("calc")}
-          />
-        )}
-        {tab === "list" && <ListTab />}
-        {tab === "recurring" && <RecurringTab />}
-        {tab === "calc" && (
-          <CalcTab
-            onUse={(amount, type) => {
-              setDraft((d) => ({ key: d.key + 1, amount: String(amount), type }));
+        {tab === "input" && <InputTab key={inputDate ?? "today"} initialDate={inputDate} />}
+        {tab === "calendar" && (
+          <CalendarTab
+            onAddOnDate={(date) => {
+              setInputDate(date);
               setTab("input");
             }}
           />
         )}
+        {tab === "list" && <ListTab />}
         {tab === "report" && <ReportTab />}
       </main>
 
@@ -128,7 +108,7 @@ function KakeiboApp() {
             return (
               <li key={t.id} className="flex-1">
                 <button
-                  onClick={() => setTab(t.id)}
+                  onClick={() => changeTab(t.id)}
                   aria-current={active ? "page" : undefined}
                   className={`flex w-full flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
                     active ? "text-rose-600 dark:text-rose-400" : "text-zinc-500"

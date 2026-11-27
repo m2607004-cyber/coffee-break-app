@@ -1,10 +1,50 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { deleteEntry, type Entry } from "../lib/entries-store";
 import { monthLabel, shiftMonth, yen } from "../lib/format";
+
+/** 明細の1行（カテゴリ・固定マーク・メモ・金額・削除ボタン） */
+export function EntryRow({ entry: e }: { entry: Entry }) {
+  return (
+    <li className="flex items-center gap-3 px-4 py-3 text-sm">
+      <span className="flex-1 truncate">
+        <span className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800">
+          {e.category}
+        </span>
+        {e.recurringId && (
+          <span className="mr-1 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-900 dark:text-sky-200">
+            固定
+          </span>
+        )}
+        <span className="text-zinc-600 dark:text-zinc-400">{e.memo}</span>
+      </span>
+      <span className={`tabular-nums font-medium ${e.type === "income" ? incomeText : expenseText}`}>
+        {e.type === "income" ? "+" : "−"}
+        {yen.format(e.amount)}
+      </span>
+      <button
+        onClick={() => {
+          if (confirm("この記録を削除しますか？")) deleteEntry(e.id);
+        }}
+        className="grid size-8 place-items-center text-zinc-400 active:text-rose-600"
+        aria-label="削除"
+      >
+        ✕
+      </button>
+    </li>
+  );
+}
 
 export const inputClass =
   "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-3 text-base dark:border-zinc-700";
+
+/** 曜日の文字色（日曜=赤、土曜=青） */
+export function weekdayClass(dow: number) {
+  if (dow === 0) return "text-rose-600 dark:text-rose-400";
+  if (dow === 6) return "text-sky-600 dark:text-sky-400";
+  return "";
+}
 
 export const incomeText = "text-emerald-600 dark:text-emerald-400";
 export const expenseText = "text-rose-600 dark:text-rose-400";

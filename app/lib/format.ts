@@ -19,6 +19,13 @@ export function shiftMonth(ym: string, delta: number) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 
+/** "YYYY-MM-DD" を delta 日ずらす（月またぎ・年またぎ対応） */
+export function shiftDay(date: string, delta: number) {
+  const [y, m, d] = (date || todayStr()).split("-").map(Number);
+  const t = new Date(y, m - 1, d + delta);
+  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+}
+
 export function daysInMonth(ym: string) {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m, 0).getDate();

@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { deleteEntry, useEntries } from "../lib/entries-store";
-import { todayStr, yen } from "../lib/format";
-import { Card, expenseText, incomeText, MonthSwitcher, Stat } from "./ui";
+import { useEntries } from "../lib/entries-store";
+import { todayStr } from "../lib/format";
+import { Card, EntryRow, expenseText, incomeText, MonthSwitcher, Stat } from "./ui";
 
 export default function ListTab() {
   const entries = useEntries();
@@ -53,34 +53,7 @@ export default function ListTab() {
             </h3>
             <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {list.map((e) => (
-                <li key={e.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                  <span className="flex-1 truncate">
-                    <span className="mr-1 rounded bg-zinc-100 px-1.5 py-0.5 text-xs dark:bg-zinc-800">
-                      {e.category}
-                    </span>
-                    {e.recurringId && (
-                      <span className="mr-1 rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-800 dark:bg-sky-900 dark:text-sky-200">
-                        固定
-                      </span>
-                    )}
-                    <span className="text-zinc-600 dark:text-zinc-400">{e.memo}</span>
-                  </span>
-                  <span
-                    className={`tabular-nums font-medium ${e.type === "income" ? incomeText : expenseText}`}
-                  >
-                    {e.type === "income" ? "+" : "−"}
-                    {yen.format(e.amount)}
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (confirm("この記録を削除しますか？")) deleteEntry(e.id);
-                    }}
-                    className="grid size-8 place-items-center text-zinc-400 active:text-rose-600"
-                    aria-label="削除"
-                  >
-                    ✕
-                  </button>
-                </li>
+                <EntryRow key={e.id} entry={e} />
               ))}
             </ul>
           </Card>

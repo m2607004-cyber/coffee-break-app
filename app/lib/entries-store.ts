@@ -188,13 +188,15 @@ export function applyRecurring(today = todayStr()) {
   if (changed) rulesStore.set(nextRules);
 }
 
-/** 今月これから自動記録される予定の固定収支（今日より後の日付のもの） */
+/** 指定した月に、これから自動記録される予定の固定収支（今日より後の日付のもの） */
+export function scheduledInMonth(rules: RecurringRule[], ym: string, today = todayStr()) {
+  return rules
+    .filter((r) => r.startMonth <= ym && (r.lastMonth === null || r.lastMonth < ym))
+    .map((rule) => ({ rule, date: dateInMonth(ym, rule.day) }))
+    .filter((s) => s.date > today);
+}
+
+/** 今月これから自動記録される予定の固定収支 */
 export function upcomingThisMonth(rules: RecurringRule[], today = todayStr()) {
-  const thisMonth = today.slice(0, 7);
-  return rules.filter(
-    (r) =>
-      r.startMonth <= thisMonth &&
-      (r.lastMonth === null || r.lastMonth < thisMonth) &&
-      dateInMonth(thisMonth, r.day) > today,
-  );
+  return scheduledInMonth(rules, today.slice(0, 7), today).map((s) => s.rule);
 }

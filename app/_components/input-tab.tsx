@@ -1,28 +1,37 @@
 "use client";
 
 import { useState } from "react";
-import { addEntry, categoriesFor, useEntries, type EntryType } from "../lib/entries-store";
-import { todayStr, yen } from "../lib/format";
-import { Card, expenseText, incomeText, inputClass, TypeToggle } from "./ui";
+import {
+  addEntry,
+  addRecurringRule,
+  categoriesFor,
+  useEntries,
+  type EntryType,
+} from "../lib/entries-store";
+import { shiftDay, todayStr, yen } from "../lib/format";
+import AmountField from "./amount-field";
+import RecurringList from "./recurring-list";
+import { Card, expenseText, incomeText, inputClass, TypeToggle, weekdayClass } from "./ui";
 
-export default function InputTab({
-  initialType = "expense",
-  initialAmount = "",
-  onOpenCalc,
-}: {
-  initialType?: EntryType;
-  initialAmount?: string;
-  onOpenCalc: () => void;
-}) {
+const arrowBtn =
+  "grid size-12 shrink-0 place-items-center rounded-lg border border-zinc-300 text-2xl active:bg-zinc-100 dark:border-zinc-700 dark:active:bg-zinc-800";
+
+export default function InputTab({ initialDate }: { initialDate?: string }) {
   const entries = useEntries();
-  const [type, setType] = useState<EntryType>(initialType);
-  const [date, setDate] = useState(todayStr);
-  const [category, setCategory] = useState(categoriesFor(initialType)[0]);
-  const [amount, setAmount] = useState(initialAmount);
+  const [type, setType] = useState<EntryType>("expense");
+  const [date, setDate] = useState(() => initialDate ?? todayStr());
+  const [category, setCategory] = useState(categoriesFor("expense")[0]);
+  const [amount, setAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  const [recurring, setRecurring] = useState(false);
 
   const categories = categoriesFor(type);
+  const today = todayStr();
+  const dow = new Date((date || today) + "T00:00:00").getDay();
+  const day = Number(date.slice(8, 10)) || 1;
+  const dayLabel = day === 31 ? "月末" : `${day}日`;
 
   const changeType = (t: EntryType) => {
     setType(t);
@@ -32,11 +41,29 @@ export default function InputTab({
   const submit = (ev: React.FormEvent) => {
     ev.preventDefault();
     const value = Math.round(Number(amount));
-    if (!date || !Number.isFinite(value) || value <= 0) return;
-    addEntry({ type, date, category, amount: value, memo: memo.trim() });
-    setSaved(`${category} ${yen.format(value)} を記録しました`);
+    if (!date || !Number.isFinite(value) || value <= 0) {
+      setError(true);
+      return;
+    }
+    setError(false);
+    if (recurring) {
+      // 入力した日付の月から、毎月同じ日に自動で記録する（今日までの分はすぐ記録される）
+      addRecurringRule({
+        type,
+        category,
+        amount: value,
+        memo: memo.trim(),
+        day,
+        startMonth: date.slice(0, 7),
+      });
+      setSaved(`${category} ${yen.format(value)} を毎月${dayLabel}の固定収支に登録しました`);
+    } else {
+      addEntry({ type, date, category, amount: value, memo: memo.trim() });
+      setSaved(`${category} ${yen.format(value)} を記録しました`);
+    }
     setAmount("");
     setMemo("");
+    setRecurring(false);
   };
 
   const recent = [...entries]
@@ -47,32 +74,70 @@ export default function InputTab({
     <div className="space-y-4">
       <Card>
         <form onSubmit={submit} className="space-y-4">
-          <TypeToggle value={type} onChange={changeType} />
-
           <div>
-            <label className="mb-1 block text-sm text-zinc-500">金額</label>
-            <div className="flex gap-2">
+            <label htmlFor="date" className="mb-1 block text-sm text-zinc-500">
+              日付
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDate(shiftDay(date, -1))}
+                className={arrowBtn}
+                aria-label="前の日"
+              >
+                ‹
+              </button>
               <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                placeholder="0"
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                  setSaved(null);
-                }}
-                className={`${inputClass} text-right text-2xl font-bold tabular-nums`}
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={`${inputClass} min-w-0 text-center`}
                 required
               />
               <button
                 type="button"
-                onClick={onOpenCalc}
-                className="shrink-0 rounded-lg border border-zinc-300 px-3 text-sm dark:border-zinc-700"
+                onClick={() => setDate(shiftDay(date, 1))}
+                className={arrowBtn}
+                aria-label="次の日"
               >
-                電卓
+                ›
               </button>
             </div>
+            <div className="mt-1 flex items-center justify-center gap-2 text-sm">
+              <span className={weekdayClass(dow)}>（{"日月火水木金土"[dow]}）</span>
+              {date === today ? (
+                <span className="text-zinc-500">今日</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDate(today)}
+                  className="rounded-full border border-zinc-300 px-2 py-0.5 text-xs dark:border-zinc-700"
+                >
+                  今日に戻す
+                </button>
+              )}
+            </div>
+          </div>
+
+          <TypeToggle value={type} onChange={changeType} />
+
+          <div>
+            <span className="mb-1 block text-sm text-zinc-500">金額</span>
+            <AmountField
+              large
+              value={amount}
+              onChange={(v) => {
+                setAmount(v);
+                setSaved(null);
+                setError(false);
+              }}
+            />
+            {error && (
+              <p role="alert" className={`mt-1 text-sm ${expenseText}`}>
+                金額を入力してください
+              </p>
+            )}
           </div>
 
           <div>
@@ -95,27 +160,48 @@ export default function InputTab({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm text-zinc-500">日付</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={inputClass}
-                required
-              />
+          <div>
+            <label htmlFor="memo" className="mb-1 block text-sm text-zinc-500">
+              メモ
+            </label>
+            <input
+              id="memo"
+              type="text"
+              placeholder="任意"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800" role="radiogroup" aria-label="記録のしかた">
+            <div className="flex gap-1">
+              {[
+                { v: false, label: "今回だけ" },
+                { v: true, label: "毎月くり返す（固定）" },
+              ].map((o) => (
+                <button
+                  key={o.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={recurring === o.v}
+                  onClick={() => setRecurring(o.v)}
+                  className={`flex-1 rounded-lg py-2 text-sm font-semibold ${
+                    recurring === o.v
+                      ? "bg-white shadow-sm dark:bg-zinc-950"
+                      : "text-zinc-500 dark:text-zinc-400"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className="mb-1 block text-sm text-zinc-500">メモ</label>
-              <input
-                type="text"
-                placeholder="任意"
-                value={memo}
-                onChange={(e) => setMemo(e.target.value)}
-                className={inputClass}
-              />
-            </div>
+            {recurring && (
+              <p className="px-2 pb-1 pt-2 text-xs text-zinc-600 dark:text-zinc-300">
+                毎月<b>{dayLabel}</b>
+                に自動で記録されます（{Number(date.slice(5, 7))}月分から）。家賃・スマホ代・サブスク・仕送り・バイト代などに。
+              </p>
+            )}
           </div>
 
           <button
@@ -124,7 +210,11 @@ export default function InputTab({
               type === "expense" ? "bg-rose-600" : "bg-emerald-600"
             }`}
           >
-            {type === "expense" ? "支出を記録" : "収入を記録"}
+            {recurring
+              ? `毎月の${type === "expense" ? "支出" : "収入"}として登録`
+              : type === "expense"
+                ? "支出を記録"
+                : "収入を記録"}
           </button>
           {saved && (
             <p role="status" className="text-center text-sm text-zinc-600 dark:text-zinc-300">
@@ -157,6 +247,8 @@ export default function InputTab({
           </ul>
         </Card>
       )}
+
+      <RecurringList />
     </div>
   );
 }
